@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <signal.h>
-#include "task.h"
+
 #include "impl.h"
 
 void _deltask(struct Glist *l, struct G *g) {

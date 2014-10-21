@@ -1,6 +1,6 @@
 #include <signal.h>
 #include <pthread.h>
-#include "task.h"
+#include "grt.h"
 /*
  * OS X before 10.5 (Leopard) does not provide
  * swapcontext nor makecontext, so we have to use our own.
