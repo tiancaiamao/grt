@@ -121,19 +121,19 @@ int		chansendp(Channel *c, void *v);
 int		chansendul(Channel *c, ulong v);
 void		chansetname(Channel *c, char *fmt, ...);
 
-#define	alt		chanalt
-#define	nbrecv	channbrecv
-#define	nbrecvp	channbrecvp
-#define	nbrecvul	channbrecvul
-#define	nbsend	channbsend
-#define	nbsendp	channbsendp
-#define	nbsendul	channbsendul
-#define	recv		chanrecv
-#define	recvp	chanrecvp
-#define	recvul	chanrecvul
-#define	send		chansend
-#define	sendp	chansendp
-#define	sendul	chansendul
+// #define	alt		chanalt
+// #define	nbrecv	channbrecv
+// #define	nbrecvp	channbrecvp
+// #define	nbrecvul	channbrecvul
+// #define	nbsend	channbsend
+// #define	nbsendp	channbsendp
+// #define	nbsendul	channbsendul
+// #define	recv		chanrecv
+// #define	recvp	chanrecvp
+// #define	recvul	chanrecvul
+// #define	send		chansend
+// #define	sendp	chansendp
+// #define	sendul	chansendul
 
 /*
  * reference counts
@@ -168,6 +168,32 @@ int		iorecvfd(Ioproc *, int);
 int		iosendfd(Ioproc*, int, int);
 int		iosleep(Ioproc *io, long n);
 long		iowrite(Ioproc *io, int fd, void *a, long n);
+
+/*
+ * Threaded I/O.
+ */
+int		fdread(int, void*, int);
+int		fdread1(int, void*, int);	/* always uses fdwait */
+int		fdwrite(int, void*, int);
+void		fdwait(int, int);
+int		fdnoblock(int);
+
+void		fdtask(void*);
+
+/*
+ * Network dialing - sets non-blocking automatically
+ */
+enum
+{
+	UDP = 0,
+	TCP = 1,
+};
+
+int		netannounce(int, char*, int);
+int		netaccept(int, char*, int*);
+int		netdial(int, char*, int);
+int		netlookup(char*, uint32_t*);	/* blocks entire program! */
+int		netdial(int, char*, int);
 
 /*
  * exec external programs

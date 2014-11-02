@@ -549,13 +549,13 @@ extern	char*	p9netmkaddr(char*, char*, char*);
 extern	int	p9reject(int, char*, char*);
 
 #ifndef NOPLAN9DEFINES
-#define	accept		p9accept
-#define	announce	p9announce
-#define	dial		p9dial
-#define	setnetmtpt	p9setnetmtpt
-#define	listen		p9listen
-#define	netmkaddr	p9netmkaddr
-#define	reject		p9reject
+// #define	accept		p9accept
+// #define	announce	p9announce
+// #define	dial		p9dial
+// #define	setnetmtpt	p9setnetmtpt
+// #define	listen		p9listen
+// #define	netmkaddr	p9netmkaddr
+// #define	reject		p9reject
 #endif
 
 /*

@@ -138,6 +138,7 @@ struct _Thread
 	uchar	*stk;
 	uint	stksize;
 	int		exiting;
+	uvlong	alarmtime;
 	Proc	*proc;
 	char	name[256];
 	char	state[256];

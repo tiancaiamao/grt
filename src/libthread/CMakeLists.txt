@@ -9,6 +9,8 @@ SET(OFILES
 	exec.c
 	ioproc.c
 	iorw.c
+	fd.c
+	net.c
 	ref.c
 	thread.c
 	wait.c)
