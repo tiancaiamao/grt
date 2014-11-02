@@ -33,6 +33,7 @@ extern "C" {
     unsigned int	taskdelay(unsigned int);
     unsigned int	taskid(void);
     
+	int maxprocs(int);
     
 //    void	tasksleep(Rendez*);
 //    int	taskwakeup(Rendez*);
@@ -121,7 +122,6 @@ extern "C" {
     int		netaccept(int, char*, int*);
     int		netdial(int, char*, int);
     int		netlookup(char*, uint32_t*);	/* blocks entire program! */
-    int		netdial(int, char*, int);
     
 #ifdef __cplusplus
 }

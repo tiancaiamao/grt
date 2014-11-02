@@ -30,7 +30,7 @@ void fdtask(struct M* m) {
 	for(;;){
 		/* we're the only one runnable - poll for i/o */
 		errno = 0;
-		// taskstate("poll");
+        // taskstate("poll");
 		if((t=sleeping.head) == NULL)
 			ms = -1;
 		else{
@@ -118,7 +118,7 @@ void fdwait(int fd, int rw) {
 		abort();
 	}
 	
-	// taskstate("fdwait for %s", rw=='r' ? "read" : rw=='w' ? "write" : "error");
+    // taskstate("fdwait for %s", rw=='r' ? "read" : rw=='w' ? "write" : "error");
 	bits = 0;
 	switch(rw){
 	case 'r':

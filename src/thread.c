@@ -2,15 +2,44 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 #include "impl.h"
 
 static pthread_key_t prockey;
 void _threadinit(void) {
     pthread_key_create(&prockey, NULL);
 }
+
+int maxprocs(int num) {
+    return _sched.threadnproc;
+}
+
+void _threadsleep(struct Cond *r) {
+    int ret;
+
+    pthread_mutex_lock(&r->l);
+    pthread_cond_init(&r->cond, NULL);
+    r->asleep = 1;
+    ret = pthread_cond_wait(&r->cond, &r->l);
+    if (ret != 0) {
+        printf("fatal error");
+        abort();
+    }
+    pthread_cond_destroy(&r->cond);
+    r->asleep = 0;
+}
+
+void _procwakeup(struct Cond *r) {
+    if(r->asleep){
+        r->asleep = 0;
+        pthread_cond_signal(&r->cond);
+    }
+}
+
 struct M* _thread() {
     return pthread_getspecific(prockey);
 };
+
 void _threadbindm(struct M* m) {
     if (pthread_setspecific(prockey, m) != 0)
         abort();

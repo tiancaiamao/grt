@@ -33,6 +33,12 @@ struct Context {
 	ucontext_t	uc;
 };
 
+struct Cond {
+    pthread_mutex_t	l;
+    pthread_cond_t	cond;
+    int		asleep;
+};
+
 struct G {
 	char	name[256];
 	char	state[256];
@@ -72,9 +78,11 @@ struct M {
 	struct Glist	runqueue;
 	struct Glist	idlequeue;
 	struct Glist	allg;
-	uint		nthread;
+    uint		numg;
 	uint		sysproc;
-	// _Procrendez	runrend;
+
+    struct Cond cond;
+	
 	Context	schedcontext;
 	void		*udata;
 	// Jmp		sigjmp;
@@ -98,6 +106,8 @@ void _threadcreate(void (*fn)(void*), void *arg, uint stack);
 struct M* _threadalloc(void);
 void _delthread(struct M *m);
 void _sysmon();
+void _threadsleep(struct Cond*);
+void _threadwakeup(struct M*);
 
 void _scheduler(struct M *m);
 struct G* _taskcreate(struct M* m, void (*fn)(void*), void *arg, uint stack);
@@ -105,5 +115,8 @@ void _taskready(struct G *g);
 void _needstack(int n);
 void _taskswitch(void);
 void _deltask(struct Glist *l, struct G *g);
+void _addtask(struct Glist *l, struct G *g);
+
+void _contextswitch(Context *from, Context *to);
 
 void fdtask(struct M*);

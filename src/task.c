@@ -9,6 +9,18 @@
 
 #include "impl.h"
 
+void taskstate(char *fmt, ...) {
+    va_list arg;
+    struct G *t;
+    struct M *m;
+
+    m = _thread();
+    t = m->g;
+    va_start(arg, fmt);
+    vsnprintf(t->state, sizeof t->name, fmt, arg);
+    va_end(arg);
+}
+
 void _deltask(struct Glist *l, struct G *g) {
 	if(g->prev)
 		g->prev->next = g->next;
@@ -20,7 +32,7 @@ void _deltask(struct Glist *l, struct G *g) {
 		l->tail = g->prev;
 }
 
-static void addtask(struct Glist *l, struct G *g)
+void _addtask(struct Glist *l, struct G *g)
 {
 	if(l->tail){
 		l->tail->next = g;
@@ -44,19 +56,13 @@ void taskname(char *fmt, ...) {
 	va_end(arg);
 }
 
-static void contextswitch(Context *from, Context *to) {
-    if(swapcontext(&from->uc, &to->uc) < 0){
-        abort();
-    }
-}
-
 void _taskready(struct G *g)
 {
 	struct M *m;
     
     m = g->m;
 	g->ready = 1;
-	addtask(&m->runqueue, g);
+    _addtask(&m->runqueue, g);
 }
 
 static void taskexits(char *msg) {
@@ -66,7 +72,7 @@ static void taskexits(char *msg) {
     m = _thread();
     g = m->g;
     g->exiting = 1;
-    contextswitch(&g->context, &m->schedcontext);
+    _contextswitch(&g->context, &m->schedcontext);
 }
 
 void _needstack(int n) {
@@ -88,7 +94,7 @@ void _taskswitch(void) {
     _needstack(0);
     m = _thread();
     g = m->g;
-    contextswitch(&g->context, &m->schedcontext);
+    _contextswitch(&g->context, &m->schedcontext);
 }
 
 static void taskstart(uint y, uint x) {
@@ -163,27 +169,13 @@ static void addGtoM(struct M *m, struct G *g) {
 	g->allnext = NULL;
 }
 
-static void delGinM(struct M *m, struct G *g) {
-	struct Glist *l;
-
-	l = &m->allg;
-	if(g->allprev)
-		g->allprev->allnext = g->allnext;
-	else
-		l->head = g->allnext;
-	if(g->allnext)
-		g->allnext->allprev = g->allprev;
-	else
-		l->tail = g->allprev;
-}
-
 struct G* _taskcreate(struct M* m, void (*fn)(void*), void *arg, uint stack) {
 	struct G *g;
 	
 	g = _taskalloc(fn, arg, stack);
 	g->m = m;
 	addGtoM(m, g);
-	m->nthread++;
+    m->numg++;
 	_taskready(g);
 	return g;
 }
@@ -192,56 +184,4 @@ int taskcreate(void (*fn)(void*), void *arg, uint stack) {
 	struct G *g;
 	g = _taskcreate(_thread(), fn, arg, stack);
 	return g->id;
-}
-
-void _scheduler(struct M *m) {
-	struct G *g;
-	
-    _threadbindm(m);
-	pthread_mutex_lock(&m->lock);
-	for(;;) {
-		while((g = m->runqueue.head) == NULL) {
-            if (m->nthread == 0) {
-                goto Out;
-            }
-			if((g = m->idlequeue.head) != NULL) {
-				// while((t = p->idlequeue.head) != NULL){
-					_deltask(&m->idlequeue, g);
-					addtask(&m->runqueue, g);
-				// }
-				continue;
-			}
-			// p->runrend.l = &p->lock;
-			// _threaddebug("scheduler sleep");
-			// _procsleep(&p->runrend);
-			// _threaddebug("scheduler wake");
-		}
-
-		// assert(p->pinthread == NULL || p->pinthread == t);
-		_deltask(&m->runqueue, g);
-		pthread_mutex_unlock(&m->lock);
-		m->g = g;
-		m->nswitch++;
-
-		contextswitch(&m->schedcontext, &g->context);
-
-		m->g = NULL;
-		pthread_mutex_lock(&m->lock);
-		if(g->exiting){
-			delGinM(m, g);
-			m->nthread--;
-			free(g);
-		}
-	}
-Out:
-    _delthread(m);
-    pthread_mutex_lock(&_sched.threadnproclock);
-    if(m->sysproc)
-        --_sched.threadnsysproc;
-    if(--_sched.threadnproc == _sched.threadnsysproc)
-        exit(0);
-    pthread_mutex_unlock(&_sched.threadnproclock);
-    pthread_mutex_unlock(&m->lock);
-    _threadbindm(NULL);
-    free(m);
 }
