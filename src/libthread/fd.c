@@ -10,7 +10,7 @@ enum
 static struct pollfd pollfd[MAXFD];
 static _Thread *polltask[MAXFD];
 static int npollfd;
-static int startedfdtask;
+static int startedfdproc;
 static _Threadlist sleeping;
 static int sleepingcounted;
 
@@ -28,34 +28,36 @@ delthread(_Threadlist *l, _Thread *t)
 }
 
 void
-fdtask(void *v)
+fdproc(void *v)
 {
 	int i, ms;
 	_Thread *t;
 	uvlong now;
+	// uvlong alarmtime;
 	
+	// alarmtime = nsec();
 	// tasksystem();
-	threadsetname("fdtask");
+	// threadsetname("fdtask");
 	for(;;){
 		/* let everyone else run */
-		while(threadyield() > 0)
-			;
+		// while(threadyield() > 0)
+			// ;
 		/* we're the only one runnable - poll for i/o */
-		errno = 0;
-		threadsetstate("poll");
-		if((t=sleeping.head) == nil)
-			ms = -1;
-		else{
+		// errno = 0;
+		// threadsetstate("poll");
+		// if((t=sleeping.head) == nil)
+			// ms = -1;
+		// else{
 			/* sleep at most 5s */
-			now = nsec();
-			if(now >= t->alarmtime)
-				ms = 0;
-			else if(now+5*1000*1000*1000LL >= t->alarmtime)
-				ms = (t->alarmtime - now)/1000000;
-			else
-				ms = 5000;
-		}
-		if(poll(pollfd, npollfd, ms) < 0){
+		// now = nsec();
+		// if(now >= alarmtime)
+		// 	ms = 0;
+		// else if(now+5*1000*1000*1000LL >= alarmtime)
+		// 	ms = (alarmtime - now)/1000000;
+		// else
+		// 	ms = 5000;
+		// }
+		if(poll(pollfd, npollfd, -1) < 0){
 			if(errno == EINTR)
 				continue;
 			fprint(2, "poll: %s\n", strerror(errno));
@@ -72,13 +74,13 @@ fdtask(void *v)
 			}
 		}
 		
-		now = nsec();
-		while((t=sleeping.head) && now >= t->alarmtime){
-			delthread(&sleeping, t);
+		// now = nsec();
+		// while((t=sleeping.head) && now >= t->alarmtime){
+			// delthread(&sleeping, t);
 			// if(!t->system && --sleepingcounted == 0)
 				// taskcount--;
-			_threadready(t);
-		}
+			// _threadready(t);
+		// }
 	}
 }
 
@@ -130,9 +132,9 @@ fdwait(int fd, int rw)
 	_Thread* taskrunning;
 	int bits;
 
-	if(!startedfdtask){
-		startedfdtask = 1;
-		threadcreate(fdtask, 0, 32768);
+	if(!startedfdproc){
+		startedfdproc = 1;
+		proccreate(fdproc, NULL, 32768);
 	}
 
 	if(npollfd >= MAXFD){

@@ -6,11 +6,6 @@
 #include <netinet/tcp.h>
 #include <sys/poll.h>
 
-#undef	accept		p9accept
-#undef	announce	p9announce
-#undef	dial		p9dial
-#undef	listen		p9listen
-
 int
 netannounce(int istcp, char *server, int port)
 {
