@@ -5,16 +5,14 @@
 #include <assert.h>
 #include "impl.h"
 
-Channel*
-chancreate(int elemsize, int bufsize)
-{
-	Channel *c;
+struct C* chancreate(int elemsize, int bufsize) {
+	struct C *c;
 
 	c = malloc(sizeof *c+bufsize*elemsize);
 	if(c == NULL){
         abort();
     }
-	memset(c, 0, sizeof *c);
+	memset(c, 0, sizeof(*c));
 	c->elemsize = elemsize;
 	c->bufsize = bufsize;
 	c->nbuf = 0;
@@ -221,10 +219,10 @@ altexec(Alt *a)
 		altcopy(a, NULL);
 }
 
-#define dbgalt 0
+// TODO too may loop in this function
 int chanalt(Alt *a) {
 	int i, j, ncan, n, canblock;
-	Channel *c;
+	struct C *c;
 	struct G *t;
 
 	_needstack(512);
@@ -238,14 +236,11 @@ int chanalt(Alt *a) {
 		a[i].task = t;
 		a[i].xalt = a;
 	}
-if(dbgalt) printf("alt ");
+	
 	ncan = 0;
 	for(i=0; i<n; i++){
 		c = a[i].c;
-if(dbgalt) printf(" %c:", "esrnb"[a[i].op]);
-if(dbgalt) { if(c->name) printf("%s", c->name); else printf("%p", c); }
 		if(altcanexec(&a[i])){
-if(dbgalt) printf("*");
 			ncan++;
 		}
 	}
@@ -254,19 +249,12 @@ if(dbgalt) printf("*");
 		for(i=0; i<n; i++){
 			if(altcanexec(&a[i])){
 				if(j-- == 0){
-if(dbgalt){
-c = a[i].c;
-printf(" => %c:", "esrnb"[a[i].op]);
-if(c->name) printf("%s", c->name); else printf("%p", c);
-printf("\n");
-}
 					altexec(&a[i]);
 					return i;
 				}
 			}
 		}
 	}
-if(dbgalt)printf("\n");
 
 	if(!canblock)
 		return -1;
@@ -285,9 +273,7 @@ if(dbgalt)printf("\n");
 	return (int)(a[0].xalt - a);
 }
 
-static int
-_chanop(Channel *c, int op, void *p, int canblock)
-{
+static int _chanop(Channel *c, int op, void *p, int canblock) {
 	Alt a[2];
 
 	a[0].c = c;

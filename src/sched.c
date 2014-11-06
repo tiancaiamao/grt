@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "impl.h"
 
 static void _schedinit() {
@@ -24,6 +25,7 @@ int main(int argc, char **argv) {
     
     m = _threadalloc();
     _taskcreate(m, taskmainstart, NULL, 8<<10);
+	_threadbindm(m);
 	_scheduler(m);
     
 	// never reach here
@@ -53,26 +55,43 @@ static void delGinM(struct M *m, struct G *g) {
 
 void _scheduler(struct M *m) {
     struct G *g;
+	struct M *tmp;
 
-    _threadbindm(m);
     pthread_mutex_lock(&m->lock);
     for(;;) {
         while((g = m->runqueue.head) == NULL) {
-            if (m->numg == 0) {
-                    goto Out;
-            }
-            if((g = m->idlequeue.head) != NULL) {
-                 while((g = m->idlequeue.head) != NULL){
-                    _deltask(&m->idlequeue, g);
-                    _addtask(&m->runqueue, g);
-                 }
-                continue;
-            }
-            // _threaddebug("scheduler sleep");
-             _threadsleep(&m->cond);
-            // _threaddebug("scheduler wake");
+			// steal from other M
+			struct M *find = NULL;
+			int max = 0;
+			for (tmp = _sched.threadprocs; tmp != _sched.threadprocstail; tmp = tmp->next) {
+				pthread_mutex_lock(&tmp->lock);
+				if (tmp->runqueue.length > max) {
+					max = tmp->runqueue.length;
+					find = tmp;
+				}
+				pthread_mutex_unlock(&tmp->lock);
+			}
+			
+			if (find && max >= 4) {
+				// steal one half
+				pthread_mutex_lock(&find->lock);
+				for (int i=0; i<max/2; i++) {
+					g = find->runqueue.head;
+					_deltask(&find->runqueue, g);
+					_addtask(&m->runqueue, g);
+				}
+				pthread_mutex_unlock(&find->lock);
+				continue;
+			} 
+			if (max == 0 && m->nsleep == 5) {
+				goto Out;
+			}
+			// nothing to do, have a rest
+			m->nsleep++;
+			sleep(1);
         }
 
+		m->nsleep = 0;
         _deltask(&m->runqueue, g);
         pthread_mutex_unlock(&m->lock);
         m->g = g;
@@ -82,9 +101,8 @@ void _scheduler(struct M *m) {
 
         m->g = NULL;
         pthread_mutex_lock(&m->lock);
-        if(g->exiting){
+        if(g->status == G_DEAD){
             delGinM(m, g);
-            m->numg--;
             free(g);
         }
     }

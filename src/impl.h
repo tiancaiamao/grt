@@ -39,9 +39,18 @@ struct Cond {
     int		asleep;
 };
 
+enum {
+	G_RUNNING,
+	G_READY,
+	G_BLOCK,
+	G_DEAD,
+	G_MAX
+};
+
 struct G {
-	char	name[256];
+	char	name[128];
 	char	state[256];
+	char status;	// G_XXX
 	struct M	*m;
 	struct G	*next;
 	struct G	*prev;
@@ -52,10 +61,10 @@ struct G {
 	uint	id;
 	uchar	*stk;
 	uint	stksize;
-	int	exiting;
+
 	int	alltaskslot;
 	int	system;
-	int	ready;
+
 	void	(*startfn)(void*);
 	void	*startarg;
 	void	*udata;
@@ -64,6 +73,7 @@ struct G {
 struct Glist {
 	struct G	*head;
 	struct G	*tail;
+	int length;
 };
 
 struct M {
@@ -73,12 +83,11 @@ struct M {
 	pthread_t		osprocid;
 	pthread_mutex_t		lock;
 	int			nswitch;
-	struct G		*g;
-	struct G	*pinthread;
-	struct Glist	runqueue;
-	struct Glist	idlequeue;
+	int nsleep;
+	struct G		*g;	// G_RUNNING
+	struct Glist	runqueue; // G_READY
+	struct Glist	idlequeue; // G_BLOCK
 	struct Glist	allg;
-    uint		numg;
 	uint		sysproc;
 
     struct Cond cond;

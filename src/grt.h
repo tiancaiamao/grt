@@ -10,6 +10,7 @@ extern "C" {
 #include <stdarg.h>
 #include <inttypes.h>
 #include <sys/types.h>
+#include <pthread.h>
     
     /*
      * basic procs and threads
@@ -46,8 +47,7 @@ extern "C" {
     typedef struct Altarray Altarray;
     typedef struct C Channel;
     
-    enum
-    {
+    enum {
         CHANEND,
         CHANSND,
         CHANRCV,
@@ -55,8 +55,7 @@ extern "C" {
         CHANNOBLK,
     };
     
-    struct Alt
-    {
+    struct Alt {
         Channel		*c;
         void		*v;
         unsigned int	op;
@@ -64,15 +63,13 @@ extern "C" {
         Alt		*xalt;
     };
     
-    struct Altarray
-    {
+    struct Altarray {
         Alt		**a;
         unsigned int	n;
         unsigned int	m;
     };
     
-    struct C
-    {
+    struct C {
         unsigned int	bufsize;
         unsigned int	elemsize;
         unsigned char	*buf;
@@ -81,6 +78,7 @@ extern "C" {
         Altarray	asend;
         Altarray	arecv;
         char		*name;
+		pthread_mutex_t mutex; 
     };
     
     int		chanalt(Alt *alts);

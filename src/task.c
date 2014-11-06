@@ -30,6 +30,7 @@ void _deltask(struct Glist *l, struct G *g) {
 		g->next->prev = g->prev;
 	else
 		l->tail = g->prev;
+	l->length--;
 }
 
 void _addtask(struct Glist *l, struct G *g)
@@ -37,9 +38,11 @@ void _addtask(struct Glist *l, struct G *g)
 	if(l->tail){
 		l->tail->next = g;
 		g->prev = l->tail;
+		l->length++;
 	}else{
 		l->head = g;
 		g->prev = NULL;
+		l->length = 1;
 	}
 	l->tail = g;
 	g->next = NULL;
@@ -61,7 +64,7 @@ void _taskready(struct G *g)
 	struct M *m;
     
     m = g->m;
-	g->ready = 1;
+	g->status = G_READY;
     _addtask(&m->runqueue, g);
 }
 
@@ -71,7 +74,7 @@ static void taskexits(char *msg) {
     
     m = _thread();
     g = m->g;
-    g->exiting = 1;
+	g->status = G_DEAD;
     _contextswitch(&g->context, &m->schedcontext);
 }
 
@@ -175,7 +178,6 @@ struct G* _taskcreate(struct M* m, void (*fn)(void*), void *arg, uint stack) {
 	g = _taskalloc(fn, arg, stack);
 	g->m = m;
 	addGtoM(m, g);
-    m->numg++;
 	_taskready(g);
 	return g;
 }

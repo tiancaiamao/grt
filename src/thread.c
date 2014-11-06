@@ -10,8 +10,19 @@ void _threadinit(void) {
     pthread_key_create(&prockey, NULL);
 }
 
+static void null(void *arg) {}
+
 int maxprocs(int num) {
-    return _sched.threadnproc;
+	int ret;
+	struct M* m;
+	
+	ret = _sched.threadnproc;
+	if (ret < num) {
+		for (int i=0; i<num-ret; i++) {
+			_threadcreate(null, NULL, 4<<10);
+		}
+	}
+    return ret;
 }
 
 void _threadsleep(struct Cond *r) {
@@ -22,7 +33,6 @@ void _threadsleep(struct Cond *r) {
     r->asleep = 1;
     ret = pthread_cond_wait(&r->cond, &r->l);
     if (ret != 0) {
-        printf("fatal error");
         abort();
     }
     pthread_cond_destroy(&r->cond);
@@ -88,6 +98,7 @@ static void startprocfn(void *v) {
     free(a);
     p->osprocid = pthread_self();
     pthread_detach(p->osprocid);
+	_threadbindm(p);
     
     (*fn)(p);
     
