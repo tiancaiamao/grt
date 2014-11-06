@@ -6,25 +6,25 @@
 static void _schedinit() {
 }
 
-static int taskargc;
-static char **taskargv;
-extern void taskmain(int argc, char *argv[]);
-static void taskmainstart(void *v) {
-	taskmain(taskargc, taskargv);
+static int grtargc;
+static char **grtargv;
+extern void grtmain(int argc, char *argv[]);
+static void grtmainstart(void *v) {
+	grtmain(grtargc, grtargv);
 }
 
 int main(int argc, char **argv) {
 	struct M *m;
 	
-	taskargc = argc;
-	taskargv = argv;	
+	grtargc = argc;
+	grtargv = argv;	
 
 	_threadinit();
 	_schedinit();
 	_sysmon();
     
     m = _threadalloc();
-    _taskcreate(m, taskmainstart, NULL, 8<<10);
+    _grtcreate(m, grtmainstart, NULL, 8<<10);
 	_threadbindm(m);
 	_scheduler(m);
     
@@ -77,8 +77,8 @@ void _scheduler(struct M *m) {
 				pthread_mutex_lock(&find->lock);
 				for (int i=0; i<max/2; i++) {
 					g = find->runqueue.head;
-					_deltask(&find->runqueue, g);
-					_addtask(&m->runqueue, g);
+					_delgrt(&find->runqueue, g);
+					_addgrt(&m->runqueue, g);
 				}
 				pthread_mutex_unlock(&find->lock);
 				continue;
@@ -92,7 +92,7 @@ void _scheduler(struct M *m) {
         }
 
 		m->nsleep = 0;
-        _deltask(&m->runqueue, g);
+        _delgrt(&m->runqueue, g);
         pthread_mutex_unlock(&m->lock);
         m->g = g;
         m->nswitch++;

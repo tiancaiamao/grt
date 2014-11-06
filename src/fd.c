@@ -13,14 +13,14 @@ enum
 };
 
 static struct pollfd pollfd[MAXFD];
-static struct G *polltask[MAXFD];
+static struct G *pollgrt[MAXFD];
 static int npollfd;
 //static int startedfdtask;
 static struct Glist sleeping;
 //static int sleepingcounted;
 static unsigned long nsec(void);
 
-void fdtask(struct M* m) {
+void fdgrt(struct M* m) {
 	int i, ms;
 	struct G *t;
 	unsigned long now;
@@ -53,19 +53,19 @@ void fdtask(struct M* m) {
 		/* wake up the guys who deserve it */
 		for(i=0; i<npollfd; i++){
 			while(i < npollfd && pollfd[i].revents){
-				_taskready(polltask[i]);
+				_grtready(pollgrt[i]);
 				--npollfd;
 				pollfd[i] = pollfd[npollfd];
-				polltask[i] = polltask[npollfd];
+				pollgrt[i] = pollgrt[npollfd];
 			}
 		}
 		
 		now = nsec();
 		while((t=sleeping.head) && now >= t->alarmtime){
-			_deltask(&sleeping, t);
+			_delgrt(&sleeping, t);
 //			if(!t->system && --sleepingcounted == 0)
 //				taskcount--;
-			_taskready(t);
+			_grtready(t);
 		}
 	}
 }
@@ -129,12 +129,12 @@ void fdwait(int fd, int rw) {
 		break;
 	}
 
-	polltask[npollfd] = _thread()->g;
+	pollgrt[npollfd] = _thread()->g;
 	pollfd[npollfd].fd = fd;
 	pollfd[npollfd].events = bits;
 	pollfd[npollfd].revents = 0;
 	npollfd++;
-	_taskswitch();
+	_grtswitch();
 }
 
 ///* Like fdread but always calls fdwait before reading. */

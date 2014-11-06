@@ -136,7 +136,7 @@ void _threadcreate(void (*fn)(void*), void *arg, uint stack) {
 
 	m = _threadalloc();
 	if (fn != NULL) {
-		g = _taskcreate(m, fn, arg, stack);		
+		g = _grtcreate(m, fn, arg, stack);		
 	}
 
 	_threadstart(m, _scheduler);
@@ -153,6 +153,6 @@ void _sysmon() {
 	pthread_mutex_unlock(&_sched.threadnproclock);
 	m->sysproc = 1;
 	
-	_threadstart(m, fdtask);
+	_threadstart(m, fdgrt);
 	return;
 }

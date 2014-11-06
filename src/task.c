@@ -9,7 +9,7 @@
 
 #include "impl.h"
 
-void taskstate(char *fmt, ...) {
+void grtstate(char *fmt, ...) {
     va_list arg;
     struct G *t;
     struct M *m;
@@ -21,7 +21,7 @@ void taskstate(char *fmt, ...) {
     va_end(arg);
 }
 
-void _deltask(struct Glist *l, struct G *g) {
+void _delgrt(struct Glist *l, struct G *g) {
 	if(g->prev)
 		g->prev->next = g->next;
 	else
@@ -33,7 +33,7 @@ void _deltask(struct Glist *l, struct G *g) {
 	l->length--;
 }
 
-void _addtask(struct Glist *l, struct G *g)
+void _addgrt(struct Glist *l, struct G *g)
 {
 	if(l->tail){
 		l->tail->next = g;
@@ -49,7 +49,7 @@ void _addtask(struct Glist *l, struct G *g)
 }
 
 // debugging
-void taskname(char *fmt, ...) {
+void grtname(char *fmt, ...) {
 	va_list arg;
 	struct G *t;
 
@@ -59,16 +59,16 @@ void taskname(char *fmt, ...) {
 	va_end(arg);
 }
 
-void _taskready(struct G *g)
+void _grtready(struct G *g)
 {
 	struct M *m;
     
     m = g->m;
 	g->status = G_READY;
-    _addtask(&m->runqueue, g);
+    _addgrt(&m->runqueue, g);
 }
 
-static void taskexits(char *msg) {
+static void grtexits(char *msg) {
     struct M *m;
     struct G *g;
     
@@ -85,12 +85,12 @@ void _needstack(int n) {
     
     if((char*)&g <= (char*)g->stk
        || (char*)&g - (char*)g->stk < 256+n){
-        printf( "task stack overflow: &t=%p tstk=%p n=%d\n", &g, g->stk, 256+n);
+        printf( "grt stack overflow: &t=%p tstk=%p n=%d\n", &g, g->stk, 256+n);
         abort();
     }
 }
 
-void _taskswitch(void) {
+void _grtswitch(void) {
     struct M *m;
     struct G *g;
     
@@ -100,7 +100,7 @@ void _taskswitch(void) {
     _contextswitch(&g->context, &m->schedcontext);
 }
 
-static void taskstart(uint y, uint x) {
+static void grtstart(uint y, uint x) {
 	struct G *g;
 	ulong z;
 
@@ -109,21 +109,21 @@ static void taskstart(uint y, uint x) {
 	z |= y;
 	g = (struct G*)z;
 	g->startfn(g->startarg);
-	taskexits(NULL);
+	grtexits(NULL);
 }
 
-static struct G* _taskalloc(void (*fn)(void*), void *arg, uint stack) {
+static struct G* _grtalloc(void (*fn)(void*), void *arg, uint stack) {
 	struct G *g;
 	sigset_t zero;
 	uint x, y;
 	ulong z;
 
-	/* allocate the task and stack together */
+	/* allocate the grt and stack together */
 	g = malloc(sizeof(struct Glist)+stack);
 	memset(g, 0, sizeof(struct G));
 	g->stk = (uchar*)(g+1);
 	g->stksize = stack;
-	// g->id = ++taskidgen;
+	// g->id = ++grtidgen;
 	g->startfn = fn;
 	g->startarg = arg;
 
@@ -151,7 +151,7 @@ static struct G* _taskalloc(void (*fn)(void*), void *arg, uint stack) {
 	y = (uint)z;
 	z >>= 16;	/* hide undefined 32-bit shift from 32-bit compilers */
 	x = (uint)(z>>16);
-	makecontext(&g->context.uc, (void(*)())taskstart, 2, y, x);
+	makecontext(&g->context.uc, (void(*)())grtstart, 2, y, x);
 
 	return g;
 }
@@ -172,18 +172,18 @@ static void addGtoM(struct M *m, struct G *g) {
 	g->allnext = NULL;
 }
 
-struct G* _taskcreate(struct M* m, void (*fn)(void*), void *arg, uint stack) {
+struct G* _grtcreate(struct M* m, void (*fn)(void*), void *arg, uint stack) {
 	struct G *g;
 	
-	g = _taskalloc(fn, arg, stack);
+	g = _grtalloc(fn, arg, stack);
 	g->m = m;
 	addGtoM(m, g);
-	_taskready(g);
+	_grtready(g);
 	return g;
 }
 
-int taskcreate(void (*fn)(void*), void *arg, uint stack) {
+int grtcreate(void (*fn)(void*), void *arg, uint stack) {
 	struct G *g;
-	g = _taskcreate(_thread(), fn, arg, stack);
+	g = _grtcreate(_thread(), fn, arg, stack);
 	return g->id;
 }

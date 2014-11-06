@@ -12,33 +12,29 @@ extern "C" {
 #include <sys/types.h>
 #include <pthread.h>
     
-    /*
-     * basic procs and threads
-     */
-    
     typedef struct G *g;
     
     int		anyready(void);
-    int		taskcreate(void (*f)(void *arg), void *arg, unsigned int stacksize);
-    void		taskexit(int);
-    void		taskexitall(int);
-    void		taskmain(int argc, char *argv[]);
-    int		taskyield(void);
-    void**		taskdata(void);
+    int		grtcreate(void (*f)(void *arg), void *arg, unsigned int stacksize);
+    void		grtexit(int);
+    void		grtexitall(int);
+    void		grtmain(int argc, char *argv[]);
+    int		grtyield(void);
+    void**		grtdata(void);
     void		needstack(int);
-    void		taskname(char*, ...);
-    void		taskstate(char*, ...);
-    char*		taskgetname(void);
-    char*		taskgetstate(void);
-    void		tasksystem(void);
-    unsigned int	taskdelay(unsigned int);
-    unsigned int	taskid(void);
+    void		grtname(char*, ...);
+    void		grtstate(char*, ...);
+    char*		grtgetname(void);
+    char*		grtgetstate(void);
+    void		grtsystem(void);
+    unsigned int	grtdelay(unsigned int);
+    unsigned int	grtid(void);
     
 	int maxprocs(int);
     
-//    void	tasksleep(Rendez*);
-//    int	taskwakeup(Rendez*);
-//    int	taskwakeupall(Rendez*);
+//    void	grtsleep(Rendez*);
+//    int	grtwakeup(Rendez*);
+//    int	grtwakeupall(Rendez*);
     
     /*
      * channel communication
@@ -59,7 +55,7 @@ extern "C" {
         Channel		*c;
         void		*v;
         unsigned int	op;
-        struct G		*task;
+        struct G		*grt;
         Alt		*xalt;
     };
     

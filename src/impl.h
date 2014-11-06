@@ -62,7 +62,7 @@ struct G {
 	uchar	*stk;
 	uint	stksize;
 
-	int	alltaskslot;
+	int	allgrtslot;
 	int	system;
 
 	void	(*startfn)(void*);
@@ -119,13 +119,13 @@ void _threadsleep(struct Cond*);
 void _threadwakeup(struct M*);
 
 void _scheduler(struct M *m);
-struct G* _taskcreate(struct M* m, void (*fn)(void*), void *arg, uint stack);
-void _taskready(struct G *g);
+struct G* _grtcreate(struct M* m, void (*fn)(void*), void *arg, uint stack);
+void _grtready(struct G *g);
 void _needstack(int n);
-void _taskswitch(void);
-void _deltask(struct Glist *l, struct G *g);
-void _addtask(struct Glist *l, struct G *g);
+void _grtswitch(void);
+void _delgrt(struct Glist *l, struct G *g);
+void _addgrt(struct Glist *l, struct G *g);
 
 void _contextswitch(Context *from, Context *to);
 
-void fdtask(struct M*);
+void fdgrt(struct M*);

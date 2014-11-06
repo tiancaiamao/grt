@@ -214,7 +214,7 @@ altexec(Alt *a)
 		altcopy(a, other);
 		altalldequeue(other->xalt);
 		other->xalt[0].xalt = other;
-		_taskready(other->task);
+		_grtready(other->grt);
 	}else
 		altcopy(a, NULL);
 }
@@ -233,7 +233,7 @@ int chanalt(Alt *a) {
 
     t = _thread()->g;
 	for(i=0; i<n; i++){
-		a[i].task = t;
+		a[i].grt = t;
 		a[i].xalt = a;
 	}
 	
@@ -264,7 +264,7 @@ int chanalt(Alt *a) {
 			altqueue(&a[i]);
 	}
 
-	_taskswitch();
+	_grtswitch();
 
 	/*
 	 * the guy who ran the op took care of dequeueing us
