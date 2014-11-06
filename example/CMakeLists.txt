@@ -1,8 +1,8 @@
 add_executable(helloworld helloworld.c)
-target_link_libraries(helloworld 9 thread)
+target_link_libraries(helloworld grt)
 
-add_executable(echotime echotime.c)
-target_link_libraries(echotime 9 thread)
+add_executable(echoserver echoserver.c)
+target_link_libraries(echoserver grt)
 
 add_executable(chan chan.c)
-target_link_libraries(chan 9 thread)
+target_link_libraries(chan grt)

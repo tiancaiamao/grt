@@ -1,5 +1,4 @@
-#include "lib9.h"
-#include "thread.h"
+#include "grt.h"
 #include <stdio.h>
 
 void worker(void *arg) {
@@ -13,13 +12,13 @@ void worker(void *arg) {
 	}
 }
 
-void threadmain(int argc, char *argv[]) {
+void grtmain(int argc, char *argv[]) {
 	Channel* c;
 	
 	c = chancreate(sizeof(int), 0);
 	
 	for (int i=0; i<3; i++) {
-		threadcreate(worker, c, 4<<10);
+		grtcreate(worker, c, 4<<10);
 		
 	}
 
@@ -28,5 +27,5 @@ void threadmain(int argc, char *argv[]) {
 	}
 	
 	chanfree(c);
-	exit(0);
+	return;
 }

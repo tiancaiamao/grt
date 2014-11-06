@@ -23,7 +23,6 @@ extern "C" {
     void**		grtdata(void);
     void		needstack(int);
     void		grtname(char*, ...);
-    void		grtstate(char*, ...);
     char*		grtgetname(void);
     char*		grtgetstate(void);
     void		grtsystem(void);

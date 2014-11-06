@@ -21,7 +21,6 @@ int main(int argc, char **argv) {
 
 	_threadinit();
 	_schedinit();
-	_sysmon();
     
     m = _threadalloc();
     _grtcreate(m, grtmainstart, NULL, 8<<10);
@@ -83,7 +82,7 @@ void _scheduler(struct M *m) {
 				pthread_mutex_unlock(&find->lock);
 				continue;
 			} 
-			if (max == 0 && m->nsleep == 5) {
+			if (m->idlequeue.length == 0 && max == 0 && m->nsleep == 5) {
 				goto Out;
 			}
 			// nothing to do, have a rest
@@ -93,6 +92,7 @@ void _scheduler(struct M *m) {
 
 		m->nsleep = 0;
         _delgrt(&m->runqueue, g);
+		g->status = G_RUNNING; // change from G_READY to G_RUNNING
         pthread_mutex_unlock(&m->lock);
         m->g = g;
         m->nswitch++;

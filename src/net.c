@@ -17,20 +17,20 @@ int netannounce(int istcp, char *server, int port) {
 	socklen_t sn;
 	uint32_t ip;
 
-    taskstate("netannounce");
+    _grtstate("netannounce");
 	proto = istcp ? SOCK_STREAM : SOCK_DGRAM;
 	memset(&sa, 0, sizeof sa);
 	sa.sin_family = AF_INET;
 	if(server != NULL && strcmp(server, "*") != 0){
 		if(netlookup(server, &ip) < 0){
-            taskstate("netlookup failed");
+            _grtstate("netlookup failed");
 			return -1;
 		}
 		memmove(&sa.sin_addr, &ip, 4);
 	}
 	sa.sin_port = htons(port);
 	if((fd = socket(AF_INET, proto, 0)) < 0){
-        taskstate("socket failed");
+        _grtstate("socket failed");
 		return -1;
 	}
 	
@@ -41,7 +41,7 @@ int netannounce(int istcp, char *server, int port) {
     }
 
 	if(bind(fd, (struct sockaddr*)&sa, sizeof sa) < 0){
-        taskstate("bind failed");
+        _grtstate("bind failed");
 		close(fd);
 		return -1;
 	}
@@ -50,13 +50,11 @@ int netannounce(int istcp, char *server, int port) {
 		listen(fd, 16);
 
 	fdnoblock(fd);
-    taskstate("netannounce succeeded");
+    _grtstate("netannounce succeeded");
 	return fd;
 }
 
-int
-netaccept(int fd, char *server, int *port)
-{
+int netaccept(int fd, char *server, int *port) {
 	int cfd, one;
 	struct sockaddr_in sa;
 	uchar *ip;
@@ -64,10 +62,10 @@ netaccept(int fd, char *server, int *port)
 	
 	fdwait(fd, 'r');
 
-    taskstate("netaccept");
+    _grtstate("netaccept");
 	len = sizeof sa;
 	if((cfd = accept(fd, (void*)&sa, &len)) < 0){
-        taskstate("accept failed");
+        _grtstate("accept failed");
 		return -1;
 	}
 	if(server){
@@ -79,7 +77,7 @@ netaccept(int fd, char *server, int *port)
 	fdnoblock(cfd);
 	one = 1;
 	setsockopt(cfd, IPPROTO_TCP, TCP_NODELAY, (char*)&one, sizeof one);
-    taskstate("netaccept succeeded");
+    _grtstate("netaccept succeeded");
 	return cfd;
 }
 
@@ -137,14 +135,14 @@ int netlookup(char *name, uint32_t *ip) {
 		return 0;
 	
 	/* BUG - Name resolution blocks.  Need a non-blocking DNS. */
-    taskstate("netlookup");
+    _grtstate("netlookup");
 	if((he = gethostbyname(name)) != 0){
 		*ip = *(uint32_t*)he->h_addr;
-        taskstate("netlookup succeeded");
+        _grtstate("netlookup succeeded");
 		return 0;
 	}
 	
-    taskstate("netlookup failed");
+    _grtstate("netlookup failed");
 	return -1;
 }
 
@@ -157,10 +155,10 @@ int netdial(int istcp, char *server, int port) {
 	if(netlookup(server, &ip) < 0)
 		return -1;
 
-    taskstate("netdial");
+    _grtstate("netdial");
 	proto = istcp ? SOCK_STREAM : SOCK_DGRAM;
 	if((fd = socket(AF_INET, proto, 0)) < 0){
-        taskstate("socket failed");
+        _grtstate("socket failed");
 		return -1;
 	}
 	fdnoblock(fd);
@@ -177,7 +175,7 @@ int netdial(int istcp, char *server, int port) {
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(port);
 	if(connect(fd, (struct sockaddr*)&sa, sizeof sa) < 0 && errno != EINPROGRESS){
-        taskstate("connect failed");
+        _grtstate("connect failed");
 		close(fd);
 		return -1;
 	}
@@ -186,7 +184,7 @@ int netdial(int istcp, char *server, int port) {
 	fdwait(fd, 'w');
 	sn = sizeof sa;
 	if(getpeername(fd, (struct sockaddr*)&sa, &sn) >= 0){
-        taskstate("connect succeeded");
+        _grtstate("connect succeeded");
 		return fd;
 	}
 	
@@ -196,7 +194,7 @@ int netdial(int istcp, char *server, int port) {
 	if(n == 0)
 		n = ECONNREFUSED;
 	close(fd);
-    taskstate("connect failed");
+    _grtstate("connect failed");
 	errno = n;
 	return -1;
 }

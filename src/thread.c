@@ -47,7 +47,9 @@ void _procwakeup(struct Cond *r) {
 }
 
 struct M* _thread() {
-    return pthread_getspecific(prockey);
+	struct M* m;
+    m = pthread_getspecific(prockey);
+	return m;
 };
 
 void _threadbindm(struct M* m) {
@@ -140,19 +142,5 @@ void _threadcreate(void (*fn)(void*), void *arg, uint stack) {
 	}
 
 	_threadstart(m, _scheduler);
-	return;
-}
-
-void _sysmon() {
-	struct M *m;
-
-	m = _threadalloc();
-	
-	pthread_mutex_lock(&_sched.threadnproclock);
-    _sched.threadnsysproc++;
-	pthread_mutex_unlock(&_sched.threadnproclock);
-	m->sysproc = 1;
-	
-	_threadstart(m, fdgrt);
 	return;
 }

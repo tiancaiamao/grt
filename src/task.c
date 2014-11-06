@@ -9,7 +9,7 @@
 
 #include "impl.h"
 
-void grtstate(char *fmt, ...) {
+void _grtstate(char *fmt, ...) {
     va_list arg;
     struct G *t;
     struct M *m;
@@ -59,13 +59,27 @@ void grtname(char *fmt, ...) {
 	va_end(arg);
 }
 
-void _grtready(struct G *g)
-{
+void _grtready(struct G *g) {
 	struct M *m;
-    
+		
     m = g->m;
+	if (g->status == G_BLOCK) {
+		_delgrt(&m->idlequeue, g);
+	}
 	g->status = G_READY;
     _addgrt(&m->runqueue, g);
+}
+
+void _grtblock(struct G *g) {
+	struct M *m;
+	
+	m = g->m;
+	if (g->status == G_READY) {
+		_delgrt(&m->runqueue, g);
+	}	
+	g->status = G_BLOCK;	
+	_addgrt(&m->idlequeue, g);
+	return;
 }
 
 static void grtexits(char *msg) {
@@ -119,7 +133,11 @@ static struct G* _grtalloc(void (*fn)(void*), void *arg, uint stack) {
 	ulong z;
 
 	/* allocate the grt and stack together */
-	g = malloc(sizeof(struct Glist)+stack);
+	g = malloc(sizeof(*g)+stack);
+	if (g == NULL) {
+		fprintf(stderr, "out of memory!");
+		abort();
+	}
 	memset(g, 0, sizeof(struct G));
 	g->stk = (uchar*)(g+1);
 	g->stksize = stack;
@@ -184,6 +202,13 @@ struct G* _grtcreate(struct M* m, void (*fn)(void*), void *arg, uint stack) {
 
 int grtcreate(void (*fn)(void*), void *arg, uint stack) {
 	struct G *g;
-	g = _grtcreate(_thread(), fn, arg, stack);
+	struct M *m;
+	
+	m = _thread();
+	if (m == NULL) {
+		fprintf(stderr, "can't call grtcreate in external thread!");
+		abort();
+	}
+	g = _grtcreate(m, fn, arg, stack);
 	return g->id;
 }

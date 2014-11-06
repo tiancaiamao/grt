@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "impl.h"
@@ -15,110 +16,109 @@ enum
 static struct pollfd pollfd[MAXFD];
 static struct G *pollgrt[MAXFD];
 static int npollfd;
-//static int startedfdtask;
+static int startedfdthread;
 static struct Glist sleeping;
 //static int sleepingcounted;
 static unsigned long nsec(void);
+static long alarmtime;
 
-void fdgrt(struct M* m) {
+static void fdthread(struct M* m) {
 	int i, ms;
-	struct G *t;
 	unsigned long now;
-	
-	// tasksystem();
-    //	taskname("fdtask");
+
 	for(;;){
-		/* we're the only one runnable - poll for i/o */
-		errno = 0;
-        // taskstate("poll");
-		if((t=sleeping.head) == NULL)
-			ms = -1;
-		else{
-			/* sleep at most 5s */
-			now = nsec();
-			if(now >= t->alarmtime)
-				ms = 0;
-			else if(now+5*1000*1000*1000LL >= t->alarmtime)
-				ms = (int)(t->alarmtime - now)/1000000;
-			else
-				ms = 5000;
-		}
+		/* sleep at most 5s */
+		now = nsec();
+		if(now >= alarmtime)
+			ms = 0;
+		else if(now+5*1000*1000*1000LL >= alarmtime)
+			ms = (int)(alarmtime - now)/1000000;
+		else
+			ms = 5000;
+
 		if(poll(pollfd, npollfd, ms) < 0){
 			if(errno == EINTR)
 				continue;
-//			printf("poll: %s\n", strerror(errno));
+			fprintf(stderr, "poll: %s\n", strerror(errno));
 			exit(0);
 		}
 
 		/* wake up the guys who deserve it */
 		for(i=0; i<npollfd; i++){
-			while(i < npollfd && pollfd[i].revents){
+			while(i < npollfd && pollfd[i].revents) {
 				_grtready(pollgrt[i]);
 				--npollfd;
 				pollfd[i] = pollfd[npollfd];
 				pollgrt[i] = pollgrt[npollfd];
 			}
 		}
-		
-		now = nsec();
-		while((t=sleeping.head) && now >= t->alarmtime){
-			_delgrt(&sleeping, t);
-//			if(!t->system && --sleepingcounted == 0)
-//				taskcount--;
-			_grtready(t);
-		}
 	}
 }
 
-//uint taskdelay(uint ms) {
-//	unsigned long  when, now;
-//	struct G *t;
-//	
-//	if(!startedfdtask){
-//		startedfdtask = 1;
-//		taskcreate(fdtask, 0, 32768);
-//	}
+// uint grtdelay(uint ms) {
+// 	unsigned long  when, now;
+// 	struct G *t;
 //
-//	now = nsec();
-//	when = now+(uvlong)ms*1000000;
-//	for(t=sleeping.head; t!=NULL && t->alarmtime < when; t=t->next)
-//		;
+// 	if(!startedfdgrt){
+// 		startedfdgrt = 1;
+// 		grtcreate(fdgrt, 0, 32768);
+// 	}
 //
-//	if(t){
-//		taskrunning->prev = t->prev;
-//		taskrunning->next = t;
-//	}else{
-//		taskrunning->prev = sleeping.tail;
-//		taskrunning->next = nil;
-//	}
-//	
-//	t = taskrunning;
-//	t->alarmtime = when;
-//	if(t->prev)
-//		t->prev->next = t;
-//	else
-//		sleeping.head = t;
-//	if(t->next)
-//		t->next->prev = t;
-//	else
-//		sleeping.tail = t;
+// 	now = nsec();
+// 	when = now+(uvlong)ms*1000000;
+// 	for(t=sleeping.head; t!=NULL && t->alarmtime < when; t=t->next)
+// 		;
 //
-//	if(!t->system && sleepingcounted++ == 0)
-//		taskcount++;
-//	taskswitch();
+// 	if(t){
+// 		grtrunning->prev = t->prev;
+// 		grtrunning->next = t;
+// 	}else{
+// 		grtrunning->prev = sleeping.tail;
+// 		grtrunning->next = nil;
+// 	}
 //
-//	return (nsec() - now)/1000000;
-//}
+// 	t = grtrunning;
+// 	t->alarmtime = when;
+// 	if(t->prev)
+// 		t->prev->next = t;
+// 	else
+// 		sleeping.head = t;
+// 	if(t->next)
+// 		t->next->prev = t;
+// 	else
+// 		sleeping.tail = t;
+//
+// 	if(!t->system && sleepingcounted++ == 0)
+// 		grtcount++;
+// 	grtswitch();
+//
+// 	return (nsec() - now)/1000000;
+// }
 
 void fdwait(int fd, int rw) {
+	struct M *m;
+	struct G *g;
 	int bits;
+	
+	if(!startedfdthread){
+		m = _threadalloc();
+		m->sysproc = 1; // TODO thread safe
+		pthread_mutex_lock(&_sched.threadnproclock);
+	    _sched.threadnsysproc++;
+		pthread_mutex_unlock(&_sched.threadnproclock);
+		_threadstart(m, fdthread);		
+		startedfdthread = 1;
+	}
 
 	if(npollfd >= MAXFD){
 		printf("too many poll file descriptors\n");
 		abort();
 	}
 	
-    // taskstate("fdwait for %s", rw=='r' ? "read" : rw=='w' ? "write" : "error");
+	m = _thread();
+	g = m->g;
+    _grtblock(g);
+    _grtstate("fdwait for %s", rw=='r' ? "read" : rw=='w' ? "write" : "error");
 	bits = 0;
 	switch(rw){
 	case 'r':

@@ -1,7 +1,8 @@
-#include "lib9.h"
+#include "grt.h"
 #include <stdio.h>
+#include <stdlib.h>
 
-void threadmain(void* args) {
+void grtmain(int argc, char *argv[]) {
 	char *c = malloc(100);
 	printf("hello world!\n");
 	free(c);
