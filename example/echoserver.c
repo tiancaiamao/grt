@@ -4,7 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
-void timeproc(void *arg) {
+void helloproc(void *arg) {
 	int fd;
 	int len, ret;
 	char *str = "hello world!\n";
@@ -13,12 +13,12 @@ void timeproc(void *arg) {
 	
 	fd = *((int*)arg);	
 	len  = strlen(str);
-	ret = fdwrite(fd, &str, len);
+	ret = fdwrite(fd, str, len);
 	if (ret != len) {
 		fprintf(stderr, "write error");
 		goto close;
 	}
-	printf("send current time:%s\n", str);
+	printf("send success:%s\n", str);
 close:
 	close(fd);
 	return;
@@ -39,7 +39,7 @@ void grtmain(int argc, char* arg[]) {
 		if (client < 0) {
 			continue;
 		}
-		tid = grtcreate(timeproc, (void*)&client, 4<<10);
+		tid = grtcreate(helloproc, (void*)&client, 4<<10);
 		printf("create a new grt %d\n", tid);
 	}
 exit:
