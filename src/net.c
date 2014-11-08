@@ -60,11 +60,12 @@ int netaccept(int fd, char *server, int *port) {
 	uchar *ip;
 	socklen_t len;
 	
-	fdwait(fd, 'r');
+	_fdwait(fd, 'r');
 
     _grtstate("netaccept");
 	len = sizeof sa;
-	if((cfd = accept(fd, (void*)&sa, &len)) < 0){
+	if((cfd = accept(fd, (void*)&sa, &len)) < 0) {
+		perror("accept");
         _grtstate("accept failed");
 		return -1;
 	}
@@ -181,7 +182,7 @@ int netdial(int istcp, char *server, int port) {
 	}
 
 	/* wait for finish */	
-	fdwait(fd, 'w');
+	_fdwait(fd, 'w');
 	sn = sizeof sa;
 	if(getpeername(fd, (struct sockaddr*)&sa, &sn) >= 0){
         _grtstate("connect succeeded");

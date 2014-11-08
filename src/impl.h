@@ -131,4 +131,4 @@ void _addgrt(struct Glist *l, struct G *g);
 
 void _contextswitch(Context *from, Context *to);
 
-void fdgrt(struct M*);
+void _fdwait(int, int);

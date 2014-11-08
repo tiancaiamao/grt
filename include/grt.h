@@ -99,7 +99,6 @@ extern "C" {
     ssize_t		fdread(int, void*, int);
 //    int		fdread1(int, void*, int);	/* always uses fdwait */
     ssize_t		fdwrite(int, void*, int);
-    void		fdwait(int, int);
     int		fdnoblock(int);
     
     /*
