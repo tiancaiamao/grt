@@ -7,34 +7,109 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/time.h>
 #include "impl.h"
 
-static struct kevent *clist;
-static struct kevent *elist;
-static int kq;
-static int POLLSIZE;
-static int npollfd;
+typedef struct aeApiState {
+    int kqfd;
+    struct kevent *events;
+	int setsize;
+} aeApiState;
+
+static aeApiState state;
+static int npoll;
 static int startedfdthread;
 
+static int aeApiCreate(aeApiState *state, int size) {
+    if (state == NULL) return -1;
+    state->events = malloc(sizeof(struct kevent)*size);
+    if (!state->events) {
+        return -1;
+    }
+	state->setsize = size;
+    state->kqfd = kqueue();
+    if (state->kqfd == -1) {
+        free(state->events);
+        return -1;
+    }
+    return 0;
+}
+
+static int aeApiResize(aeApiState *state, int setsize) {
+    state->events = realloc(state->events, sizeof(struct kevent)*setsize);
+	state->setsize = setsize;
+    return 0;
+}
+
+static void aeApiFree(aeApiState *state) {
+    close(state->kqfd);
+    free(state->events);
+}
+
+static int aeApiAddEvent(aeApiState *state, int fd, char rw, struct G *g) {
+    struct kevent ke;
+
+    if (rw == 'r') {
+        EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, g);
+        if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1) return -1;
+    }
+    if (rw == 'w') {
+        EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, g);
+        if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1) return -1;
+    }
+    return 0;
+}
+
+static void aeApiDelEvent(aeApiState *state, int fd, char rw) {
+    struct kevent ke;
+
+    if (rw == 'r') {
+        EV_SET(&ke, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+        kevent(state->kqfd, &ke, 1, NULL, 0, NULL);
+    }
+    if (rw == 'w') {
+        EV_SET(&ke, fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+        kevent(state->kqfd, &ke, 1, NULL, 0, NULL);
+    }
+}
+
 static void fdthread(struct M* m) {
-	int n;
+	int n, retval;
 	
 	for (;;) {
-		n = kevent(kq, clist, npollfd, elist, npollfd, NULL);
-		if (n < 0) {
-			perror("kevent failed");
-			return;
-		} 
-		
-		for (int i=0; i<n; i++) {
-	        if (elist[i].flags & EV_ERROR) {
-	           fprintf(stderr, "EV_ERROR: %s\n", strerror(elist[i].data));
-			   close(elist[i].ident);
-			   continue;
+        retval = kevent(state.kqfd, NULL, 0, state.events, state.setsize, NULL);
+	    if (retval > 0) {
+	        int i;
+
+	        for(i = 0; i < retval; i++) {
+				char c;
+	            struct kevent *e = state.events+i;
+				
+		        if (e->flags & EV_ERROR) {
+		           fprintf(stderr, "EV_ERROR: %s\n", strerror(e->data));
+				   close(e->ident);
+				   continue;
+		        } 
+		        
+				_grtready(e->udata);
+				switch (e->filter) {
+					case EVFILT_READ:
+						c = 'r';
+						break;
+					case EVFILT_WRITE:
+						c = 'w';
+						break;
+				}
+				aeApiDelEvent(&state, e->ident, c);
+				
+	            // if (e->filter == EVFILT_READ) mask |= AE_READABLE;
+	            // if (e->filter == EVFILT_WRITE) mask |= AE_WRITABLE;
+	            // state->fired[i].fd = e->ident;
+	            // state->fired[i].mask = mask;
 	        }
-			
-			_grtready(elist[i].udata);
-		}
+	    }
 	}
 }
 
@@ -46,16 +121,6 @@ void _fdwait(int fd, int rw) {
 	
 	m = _thread();
 	g = m->g;
-
-	bits = 0;
-	switch(rw){
-	case 'r':
-		bits |= EVFILT_READ;
-		break;
-	case 'w':
-		bits |= EVFILT_WRITE;
-		break;
-	}
 	
 	if (!startedfdthread) {
 		m = _threadalloc();
@@ -63,42 +128,24 @@ void _fdwait(int fd, int rw) {
 		pthread_mutex_lock(&_sched.threadnproclock);
 	    _sched.threadnsysproc++;
 		pthread_mutex_unlock(&_sched.threadnproclock);
-
-		POLLSIZE = 1024;
-		clist = malloc(POLLSIZE * sizeof(struct kevent));
-		elist = malloc(POLLSIZE * sizeof(struct kevent));
-
-		kq = kqueue();
-		if (kq < 0) {
-			perror("kqueue");
+		
+		npoll = 0;
+		if (aeApiCreate(&state, 15000) < 0) {
+			fprintf(stderr, "kqueue init failed");
 			abort();
 		}
-		
-	    EV_SET(&clist[npollfd], fd, bits, EV_ADD|EV_ENABLE, 0, 0, g);
-	    EV_SET(&elist[npollfd], fd, bits, EV_ADD|EV_ENABLE, 0, 0, g);
-		npollfd = 1;
+	} 
+	
+	if(npoll >= state.setsize) {
+		aeApiResize(&state, state.setsize+1024);
+	}
 
+	aeApiAddEvent(&state, fd, rw, g);
+	npoll++;
+	
+	if (!startedfdthread) {
 		_threadstart(m, fdthread);
 		startedfdthread = 1;
-	} else {
-		int succ;
-		if(npollfd >= POLLSIZE) {		
-			POLLSIZE += 1024;
-			clist = realloc(clist, POLLSIZE * sizeof(struct kevent));
-			elist = realloc(elist, POLLSIZE * sizeof(struct kevent));
-			if (clist == NULL && elist == NULL) {
-				fprintf(stderr, "out of memory");
-				abort();
-			}
-		}
-
-	    EV_SET(&clist[npollfd], fd, bits, EV_ADD|EV_ENABLE, 0, 0, g);
-		succ = kevent(kq, &clist[npollfd], 1, NULL, 0, NULL);
-		if (succ < 0) {
-			// TODO
-			abort();
-		}
-		npollfd++;
 	}
 	
     _grtblock(g);

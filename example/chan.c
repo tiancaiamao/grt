@@ -14,15 +14,16 @@ void worker(void *arg) {
 
 void grtmain(int argc, char *argv[]) {
 	Channel* c;
+	int i;
 	
 	c = chancreate(sizeof(int), 0);
 	
-	for (int i=0; i<3; i++) {
+	for (i=0; i<3; i++) {
 		grtcreate(worker, c, 4<<10);
 		
 	}
 
-	for (int i=0; i<10; i++) {
+	for (i=0; i<10; i++) {
 		chansend(c, (void*)&i);
 	}
 	

@@ -72,9 +72,10 @@ void _scheduler(struct M *m) {
 			}
 			
 			if (find && max >= 4) {
+				int i;
 				// steal one half
 				pthread_mutex_lock(&find->lock);
-				for (int i=0; i<max/2; i++) {
+				for (i=0; i<max/2; i++) {
 					g = find->runqueue.head;
 					_delgrt(&find->runqueue, g);
 					_addgrt(&m->runqueue, g);

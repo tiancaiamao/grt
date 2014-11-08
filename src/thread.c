@@ -18,7 +18,8 @@ int maxprocs(int num) {
 	
 	ret = _sched.threadnproc;
 	if (ret < num) {
-		for (int i=0; i<num-ret; i++) {
+		int i;
+		for (i=0; i<num-ret; i++) {
 			_threadcreate(null, NULL, 4<<10);
 		}
 	}
