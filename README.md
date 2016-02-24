@@ -1,7 +1,1 @@
-# compile
-
-	mkdir build
-	cd build
-	cmake ..
-	make
-
+not ready yet
