@@ -1,2 +1,4 @@
 src/ltask.dylib
 src/ltask.dylib.dSYM/
+src/socket.dylib
+src/socket.dylib.dSYM/
