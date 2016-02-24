@@ -1,2 +1,2 @@
-package.cpath = package.cpath .. ";../../src/?.dylib"
+package.cpath = package.cpath .. ";../../lib/?.dylib"
 return require("ltask")
