@@ -1,5 +1,8 @@
 SRCS = ltask.c handlemap.c queue.c schedule.c serialize.c
 
+all :
+	echo 'make macosx or make linux or make mingw'
+
 macosx : ltask.dylib
 linux : ltask.so
 mingw : ltask.dll
