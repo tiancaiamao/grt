@@ -171,7 +171,7 @@ schedule_select(struct schedule *s, taskid id, int n, channelid *channels) {
 			}
 		}
 		release_task(s, id);
-	} 
+	}
 	return 0;
 }
 

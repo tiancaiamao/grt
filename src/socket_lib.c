@@ -752,7 +752,7 @@ llisten(lua_State *L) {
 }
 
 int 
-luaopen_socket(lua_State *L) {
+luaopen_csocket(lua_State *L) {
 	luaL_checkversion(L);
 	luaL_Reg l[] = {
 		{ "init", linit },

@@ -8,11 +8,11 @@ src/serialize.c
 all :
 	echo 'make macosx or make linux or make mingw'
 
-macosx : lib/ltask.dylib lib/socket.dylib
+macosx : lib/ltask.dylib lib/csocket.dylib
 linux : ltask.so
 mingw : ltask.dll
 
-lib/socket.dylib : src/socket_lib.c
+lib/csocket.dylib : src/socket_lib.c
 	gcc -g -Wall -bundle -undefined dynamic_lookup -fPIC -o $@ $^
 
 lib/ltask.dylib : $(SRCS)
@@ -25,4 +25,4 @@ ltask.dll : $(SRCS)
 	gcc -Wall -g --shared -o $@ $^ -I/usr/local/include -L/usr/local/bin -llua53
 
 clean :
-	rm -f ltask.dylib ltask.so ltask.dll
+	rm -rf lib/*
