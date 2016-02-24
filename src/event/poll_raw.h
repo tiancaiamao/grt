@@ -1,6 +1,12 @@
 #ifndef _POLLER_
 #define _POLLER_
 
+
+enum {
+  POLL_READ = 1,
+  POLL_WRITE = 2,
+};
+
 #include <stdbool.h>
 
 struct poll_event {
