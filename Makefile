@@ -8,14 +8,17 @@ src/serialize.c
 all :
 	echo 'make macosx or make linux or make mingw'
 
-macosx : lib/ltask.dylib lib/csocket.dylib
+macosx : luaclib/ltask.dylib luaclib/csocket.dylib luaclib/csystem.dylib
 linux : ltask.so
-mingw : ltask.dll
+mingw : ltask.dl
 
-lib/csocket.dylib : src/socket_lib.c
+luaclib/csystem.dylib : src/system.c
 	gcc -g -Wall -bundle -undefined dynamic_lookup -fPIC -o $@ $^
 
-lib/ltask.dylib : $(SRCS)
+luaclib/csocket.dylib : src/socket_lib.c
+	gcc -g -Wall -bundle -undefined dynamic_lookup -fPIC -o $@ $^
+
+luaclib/ltask.dylib : $(SRCS)
 	gcc -g -Wall -bundle -undefined dynamic_lookup -fPIC -o $@ $^ -lpthread
 
 ltask.so : $(SRCS)
@@ -25,4 +28,4 @@ ltask.dll : $(SRCS)
 	gcc -Wall -g --shared -o $@ $^ -I/usr/local/include -L/usr/local/bin -llua53
 
 clean :
-	rm -rf lib/*
+	rm -rf luaclib/*

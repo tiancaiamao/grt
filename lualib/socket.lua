@@ -1,8 +1,20 @@
+package.cpath = package.cpath .. ";../luaclib/?.dylib"
+local csystem = require "csystem"
+local ltask = require "ltask"
+
 require "system"
 
 local M = {
   __command = new_command()
 }
+
+local socket_chan = csystem.get(csystem.SOCKET)
+if not socket_chan then
+  local filename = package.searchpath("socket_service", package.path)
+  socket_chan = ltask.channel()
+  ltask.task(filename, socket_chan)
+  csystem.set(csystem.SOCKET, socket_chan)
+end
 
 local sockets = {}
 local sockets_event = {}
@@ -46,7 +58,7 @@ function M.connect(addr, port)
   local cmd = M.__command
   local ch = ltask.channel()
 	local obj = {
-    __fd = assert(cmd:call("socket", "connect", ch, addr, port), "Connect failed"),
+    __fd = assert(cmd:call(socket_chan, "connect", ch, addr, port), "Connect failed"),
     __ch = ch,
   }
 	return setmetatable(obj, socket_meta)
@@ -56,7 +68,7 @@ function M.listen(port)
   local cmd = M.__command
   local ch = ltask.channel()
   local obj = {
-    __fd = assert(cmd:call("socket", "listen", ch, port), "Listen failed"),
+    __fd = assert(cmd:call(socket_chan, "listen", ch, port), "Listen failed"),
     __ch = ch,
   }
   return setmetatable(obj, listen_meta)
@@ -71,7 +83,7 @@ function listen_socket:accept()
           __fd = fd,
           __ch = ltask.channel(),
         }
-        return setmetatable(obj, socket) addr
+        return setmetatable(obj, socket), addr
       end
     end
     coroutine.yield()
@@ -84,13 +96,13 @@ function socket:close()
 	sockets[fd] = nil
 	sockets_closed[fd] = true
   local cmd = self.__command
-  cmd:call("socket", "disconnect", fd)
+  cmd:call(socket_chan, "disconnect", fd)
 end
 
 function socket:write(msg)
 	local fd = self.__fd
   local cmd = self.__command
-  cmd:call("socket", "send", fd, csocket.sendpack(msg))
+  cmd:call(socket_chan, "send", fd, csocket.sendpack(msg))
 end
 
 local function socket_wait(sock, sep)

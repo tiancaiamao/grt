@@ -1,4 +1,4 @@
-package.cpath = package.cpath .. ";../../lib/?.dylib"
+package.cpath = package.cpath .. ";../../luaclib/?.dylib"
 
 local ltask = require "ltask"
 local csocket = require "csocket"
