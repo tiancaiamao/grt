@@ -12,10 +12,10 @@ print("channel为空么？", ln.__ch)
 print("hello world!")
 
 while true do
-  conn = ln.accept()
+  conn, addr = ln:accept()
   if conn then
-    print("accept a connection")
-    conn.write("hello world")
-    conn.close()
+    print("accept a connection", addr)
+    conn:write("hello world")
+    conn:close()
   end
 end

@@ -1,4 +1,5 @@
 package.cpath = package.cpath .. ";../luaclib/?.dylib"
+local csocket = require "csocket"
 local csystem = require "csystem"
 local ltask = require "ltask"
 
@@ -20,19 +21,25 @@ local sockets = {}
 local sockets_event = {}
 local sockets_arg = {}
 local sockets_closed = {}
-local sockets_fd = nil
 local sockets_accept = {}
 
 local socket = {}
 local listen_socket = {}
 
-local function close_msg(self)
-	cell.send(sockets_fd, "disconnect", self.__fd)
+function socket:close()
+	local fd = self.__fd
+  if sockets_closed[fd] then
+    return
+  end
+	sockets[fd] = nil
+	sockets_closed[fd] = true
+  local cmd = self.__command
+  cmd:call(socket_chan, "disconnect", fd)
 end
 
 local socket_meta = {
 	__index = socket,
-	__gc = close_msg,
+	__gc = socket.close,
 	__tostring = function(self)
 		return "[socket: " .. self.__fd .. "]"
 	end,
@@ -77,26 +84,18 @@ end
 function listen_socket:accept()
   while true do
     if ltask.select(self.__ch) then
-      local ok, fd, addr = ltask.recv(c)
+      local ok, fd, addr = ltask.recv(self.__ch)
       if ok then
         local obj = {
           __fd = fd,
           __ch = ltask.channel(),
+          __command = new_command(),
         }
-        return setmetatable(obj, socket), addr
+        return setmetatable(obj, socket_meta), addr
       end
     end
     coroutine.yield()
   end
-end
-
-function socket:close()
-	assert(sockets_fd)
-	local fd = self.__fd
-	sockets[fd] = nil
-	sockets_closed[fd] = true
-  local cmd = self.__command
-  cmd:call(socket_chan, "disconnect", fd)
 end
 
 function socket:write(msg)

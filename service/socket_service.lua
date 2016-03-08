@@ -44,7 +44,7 @@ function command.forward(fd, addr)
 	end
 end
 
-command.send = csocket.lsend
+command.send = csocket.send
 
 function command.disconnect(fd)
 	if sockets[fd] then
@@ -57,6 +57,7 @@ end
 local function dispatch(...)
   local arg = {...}
   if arg[1] then
+    print("dispatch receive command:", arg[3])
     local cmdfn = command[arg[3]]
     ltask.send(arg[2], cmdfn(select(4, ...)))
   end
