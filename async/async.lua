@@ -65,6 +65,7 @@ end
 -- Listener instance should overload it
 function Listener:on_conn(fd, event) 
 	print('accept a new connection fd=', fd)
+	socket.close(fd)
 end
 
 local BufferQueue = {}
