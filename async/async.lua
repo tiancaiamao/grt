@@ -106,10 +106,13 @@ function BufferQueue:push_back(x)
 end
 
 local Conn = {}
-function Conn:new(conf)
-	conf.buffer = BufferQueue:new()
+function Conn:new(fd)
+	local obj = {
+		fd = fd,
+		buffer = BufferQueue:new()
+	}
 	self.__index = self
-	return setmetatable(conf, self)
+	return setmetatable(obj, self)
 end
 function Conn:add2event(el)
 	self.eventloop = el
@@ -119,6 +122,8 @@ function Conn:on_error(eventloop)
 --	eventloop.del(self)
 --	socket.close(self.fd) 
 end
+-- Conn instance should overload on_read
+function Conn:on_read(data) end
 function Conn:on_readable(eventloop) 
 	local data = socket.read(self.fd)
 	self:on_read(data)
