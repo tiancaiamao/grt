@@ -1,23 +1,20 @@
 local async = require "async"
-local eventloop = async.eventloop
-local listener = async.listener
-local connection = async.connection
+local EventLoop = async.EventLoop
+local Listener = async.Listener
+local Connection = async.Connection
 
-function on_new_connection(fd, event)
+local event = EventLoop:new()
+local server = Listener:new("8888")
+function server:on_conn(fd, event) 
 	local conn = {
 		fd = fd,
 		on_read = function (c, p)
 			c:write(p)
 		end
 	}
-	local c = connection:new(conn)
+	local c = Connection:new(conn)
 	c:add2event(event)
 end
-
-local event = eventloop:new()
-local server = listener:new({
-	port = 8888, 
-	on_conn = on_new_connection})
 
 event:add(server)
 event:run()

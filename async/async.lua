@@ -3,8 +3,8 @@ local epoll = require "c.epoll"
 
 local M = {}
 
-local eventloop = {}
-function eventloop:new()
+local EventLoop = {}
+function EventLoop:new()
 	local obj = {
 		handlers = {},
 		epollfd = epoll.create(),
@@ -13,17 +13,17 @@ function eventloop:new()
 	return setmetatable(obj, self)
 end
 
-function eventloop:add(handler)
+function EventLoop:add(handler)
 	self.handlers[handler.fd] = handler
 	epoll.ctl(self.epollfd, epoll.CTL_ADD, handler.fd)
 end
 
-function eventloop:del(handler)
+function EventLoop:del(handler)
 	self.handlers[handler.fd] = nil
 	epoll.ctl(self.epollfd, epoll.CTL_DEL, handler.fd)
 end
 
-function eventloop:run() 
+function EventLoop:run() 
 	local result = {}
 	while true do
 		for i = 1, epoll.wait(self.epollfd, result) do
@@ -40,26 +40,32 @@ function eventloop:run()
 	end
 end
 
-local listener = {}
-function listener:new(conf)
-	fd, err = socket.listen(conf.port)
+local Listener = {}
+function Listener:new(addr)
+	fd, err = socket.listen(addr)
 	if err then
 		print(err)
 		return nil
 	end
-	conf.fd = fd
+	local obj = {
+		fd = fd,
+		addr = addr,
+	}
 	self.__index = self
-	return setmetatable(conf, self)
+	return setmetatable(obj, self)
 end
-function listener:on_writeable(eventloop) end
-function listener:on_error(eventloop) end
-function listener:on_readable(eventloop)
+function Listener:on_writeable(eventloop) end
+function Listener:on_error(eventloop) end
+function Listener:on_readable(eventloop)
 	local fd, err = socket.accept(self.fd)
 	if not err then 
-		self.on_conn(fd, eventloop)
+		self:on_conn(fd, eventloop)
 	end
 end
-
+-- Listener instance should overload it
+function Listener:on_conn(fd, event) 
+	print('accept a new connection fd=', fd)
+end
 
 local BufferQueue = {}
 
@@ -99,30 +105,30 @@ function BufferQueue:push_back(x)
 	self.deque[self.head] = x
 end
 
-local conn = {}
-function conn:new(conf)
+local Conn = {}
+function Conn:new(conf)
 	conf.buffer = BufferQueue:new()
 	self.__index = self
 	return setmetatable(conf, self)
 end
-function conn:add2event(el)
+function Conn:add2event(el)
 	self.eventloop = el
 	el:add(self)
 end
-function conn:on_error(eventloop) 
+function Conn:on_error(eventloop) 
 --	eventloop.del(self)
 --	socket.close(self.fd) 
 end
-function conn:on_readable(eventloop) 
+function Conn:on_readable(eventloop) 
 	local data = socket.read(self.fd)
 	self:on_read(data)
 end
-function conn:write(data)
+function Conn:write(data)
 	self.buffer:push(data)
 	local epollfd = self.eventloop.epollfd
 	epoll.ctl(epollfd, epoll.CTL_WRITE, self.fd, true)
 end
-function conn:on_writeable(eventloop)
+function Conn:on_writeable(eventloop)
 	local data = self.buffer:pop()
 	while data do
 		local len = socket.write(self.fd, data)
@@ -137,8 +143,8 @@ function conn:on_writeable(eventloop)
 	epoll.ctl(eventloop.epollfd, epoll.CTL_WRITE, self.fd, false)
 end
 
-M.eventloop = eventloop
-M.listener = listener
-M.connection = conn
+M.EventLoop = EventLoop
+M.Listener = Listener
+M.Connection = Conn
 
 return M
