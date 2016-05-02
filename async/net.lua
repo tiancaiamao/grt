@@ -29,6 +29,7 @@ function Thread.yield()
 end
 
 local event = EventLoop:new()
+print('新建的时候event=', event)
 
 local co_epoll = coroutine.create(function()
 	print('epoll线程')
@@ -68,47 +69,35 @@ function Listener:accept()
 	return x, y, z
 end
 
-function main()
-	print('main线程')
-	local lconn = Listener:new("8888")
+function Thread.big_bang()
+	print("begin...", #q1, #q2)
 	while true do
-		local conn = lconn:accept()
-		print('accept居然真的返回了？', conn)
-		Thread.new(function()
-			conn:add2event(event)
-			print('启动协程服务连接')
-			while true do
-				print('xxx运行read之前', conn)
-				local data = conn:read()
-				print('从client读了一条数据')
-				conn:write(data)
-				print('再写回给client')
+		q1, q2 = q2, q1
+		if #q1 == 0 then 
+			print('没有可运行了...调回co_epoll')
+			local x, y, z = coroutine.resume(co_epoll)
+			print('co_epoll返回', x, y, z)
+		end
+		for i = 1, #q1 do
+			local current = q1[i]
+			local data = tls[current]
+			local x, y, z
+			if data then
+				x, y, z = coroutine.resume(current, table.unpack(data))
+			else
+				x, y, z = coroutine.resume(current)
 			end
-		end)
+			q1[i] = nil
+			print('返回到调度器里', x, y, z)
+		end
 	end
-	print '靠，居然退出了?'
+	print('all finished')
 end
 
-Thread.new(main)
-print("begin...", #q1, #q2)
-while true do
-	q1, q2 = q2, q1
-	if #q1 == 0 then 
-		print('没有可运行了...调回co_epoll')
-		local x, y, z = coroutine.resume(co_epoll)
-		print('co_epoll返回', x, y, z)
-	end
-	for i = 1, #q1 do
-		local current = q1[i]
-		local data = tls[current]
-		local x, y, z
-		if data then
-			x, y, z = coroutine.resume(current, table.unpack(data))
-		else
-			x, y, z = coroutine.resume(current)
-		end
-		q1[i] = nil
-		print('返回到调度器里', x, y, z)
-	end
-end
-print('all finished')
+print('加载库的时候event=', event)
+
+return {
+	Thread = Thread,
+	Listener = Listener,
+	g_event = event,
+}
