@@ -50,7 +50,7 @@ lepoll_wait(lua_State *L) {
 	int efd = luaL_checkinteger(L, 1);
 	luaL_checktype(L, 2, LUA_TTABLE);
 
-	struct event events[MAXEVENTS] = {};
+	struct event events[MAXEVENTS];
 	int n = sp_wait(efd, events, MAXEVENTS, 200);
 	int i;
 	for(i = 0; i < n; i++) {
