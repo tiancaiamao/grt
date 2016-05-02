@@ -1,0 +1,3 @@
+测试一个是不是每次即使不设置epoll的EPOLLOUT，epoll的wait返回都会收到可写，然后去调Handler的on_writeable
+
+Thread.new的参数那个函数，支持传参数
