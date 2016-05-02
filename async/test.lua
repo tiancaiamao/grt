@@ -16,15 +16,3 @@ local event = EventLoop:new()
 event:add(server)
 event:run()
 
--- 同步API，基于coroutine
-
---[[
-local lconn = net.listen(":8808")
-while true {
-	conn, ok = lconn.accept()
-	task.new(function()
-		data = conn:read()
-		conn:write(data)
-	end)
-}
---]]
