@@ -34,6 +34,7 @@ function EventLoop:run()
 				handler:on_readable(self)
 			end
 			if mask & epoll.MASK_WRITE then
+                print('写数据')
 				handler:on_writeable(self)
 			end
 		end
@@ -133,10 +134,12 @@ function Conn:write(data)
 	self.buffer:push(data)
 	local epollfd = self.eventloop.epollfd
 	epoll.ctl(epollfd, epoll.CTL_WRITE, self.fd, true)
+    print('conn:write 数据推了并设置了write')
 end
 function Conn:on_writeable(eventloop)
 	local data = self.buffer:pop()
 	while data do
+        print('这时是真的写数据了', data)
 		local len = socket.write(self.fd, data)
 		if len < string.len(data) then
 			local rem = string.sub(data)
@@ -147,6 +150,7 @@ function Conn:on_writeable(eventloop)
 		data = self.buffer:pop()
 	end
 	epoll.ctl(eventloop.epollfd, epoll.CTL_WRITE, self.fd, false)
+    print('退出呀')
 end
 
 M.EventLoop = EventLoop
