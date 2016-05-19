@@ -19,7 +19,7 @@ url_cb(http_parser *parser, const char *data, size_t len) {
     printf("--------url cb:%s %p\n", data, L);
     lua_pushstring(L, "URL");
     lua_pushlstring(L, data, len);
-    lua_rawset(L, 1);
+    lua_rawset(L, -3);
     return 0;
 }
 
@@ -30,7 +30,7 @@ status_cb(http_parser *parser, const char *data, size_t len) {
     printf("---------status:%s\n", data);
     lua_pushstring(L, "Status");
     lua_pushlstring(L, data, len);
-    lua_rawset(L, 1);
+    lua_rawset(L, -3);
     return 0;
 }
 
@@ -42,7 +42,7 @@ header_field_cb(http_parser *parser, const char *data, size_t len) {
     printf("--------field:%s\n", data);
     lua_pushstring(L, "last_field");
     lua_pushlstring(L, data, len);
-    lua_rawset(L, 1);
+    lua_rawset(L, -3);
     return 0;
 }
 
@@ -55,7 +55,7 @@ header_value_cb(http_parser *parser, const char *data, size_t len) {
     // head = Response[Head] or {}
     lua_pushstring(L, "Head");
     lua_pushstring(L, "Head");
-    lua_rawget(L, 1);
+    lua_rawget(L, -3);
     if (lua_type(L, -1) == LUA_TNIL) {
         printf("第一次会新建head表");
         lua_pop(L, 1);
@@ -64,19 +64,19 @@ header_value_cb(http_parser *parser, const char *data, size_t len) {
 
     // head[Response[last_field]] = data
     lua_pushstring(L, "last_field");
-    lua_rawget(L, 1);
+    lua_rawget(L, -4);
     // TODO check not nil
     printf("应该check不为nil的");
     lua_pushlstring(L, data, len);
     lua_rawset(L, -3);
 
     // Response[Head] = head
-    lua_rawset(L, 1);
+    lua_rawset(L, -3);
 
     // Response[last_field] = nil
     lua_pushstring(L, "last_field");
     lua_pushnil(L);
-    lua_rawset(L, 1);
+    lua_rawset(L, -3);
     return 0;
 }
 
@@ -85,8 +85,8 @@ headers_complete_cb(http_parser *parser) {
     lua_State *L = parser->data;
     printf("---lua stack size: %d\n", lua_gettop(L));
     printf("---------headers complete\n");
-    lua_pushstring(L, "headers_complete");
-    lua_pushboolean(L, 1); 
+    /* lua_pushstring(L, "headers_complete"); */
+    /* lua_pushboolean(L, 1); */
     return 0;
 }
 
@@ -95,7 +95,7 @@ body_cb(http_parser *parser, const char *data, size_t len) {
     lua_State *L = parser->data;
     lua_pushstring(L, "Body");
     lua_pushlstring(L, data, len);
-    lua_rawset(L, 1);
+    lua_rawset(L, -3);
     return 0;
 }
 
@@ -103,9 +103,9 @@ static int
 message_complete_cb(http_parser *parser) {
     lua_State *L = parser->data;
     printf("---lua stack size: %d\n", lua_gettop(L));
-    lua_pushstring(L, "complete");
-    lua_pushboolean(L, 1);
-    lua_rawset(L, 1);
+    /* lua_pushstring(L, "complete"); */
+    /* lua_pushboolean(L, 1); */
+    /* lua_rawset(L, 1); */
     return 0;
 }
 
@@ -136,43 +136,36 @@ static http_parser_settings settings = {
 
 static int
 l_parse_http(lua_State *L) {
-    http_parser *parser = NULL;
-    lua_pushstring(L, "parser");
-    lua_rawget(L, 1);
-    if (lua_type(L, -1) == LUA_TNIL) {
-        printf("新建parser");
-        lua_pop(L, 1);
-        lua_pushstring(L, "parser");
-        parser = lua_newuserdata(L, sizeof(http_parser));
-        http_parser_init(parser, HTTP_REQUEST);
-        lua_rawset(L, 1);
-    } else {
-        printf("重用parser");
-        parser = lua_touserdata(L, -1);
-    }
-
-    printf("运行到这里了, request[parse]\n");
-
-    size_t len;
-    const char *data = luaL_checklstring(L, 2, &len);
-    lua_pop(L, 1);
-    parser->data = L; // for callback to use
-
-    printf("parser = %p\n", parser);
-    size_t parsed = http_parser_execute(parser, &settings, data, len);
-    if (parsed != len) {
-        printf("error happend?? input %zu, parsed %zu", len, parsed);
-        return 0;
-    }
-
-    printf("运行到返回前\n");
+  // (parser userdata, data lstring, result {})
+  http_parser *parser = lua_touserdata(L, 1);
+  printf("parse_http %p\n", parser);
+  parser->data = L;
+  size_t len;
+  const char *data = luaL_checklstring(L, 2, &len);
+  printf("%zu %s\n", len, data);
+  size_t parsed = http_parser_execute(parser, &settings, data, len);
+  if (parsed != len) {
+    printf("error happend?? input %zu, parsed %zu", len, parsed);
     return 0;
+  }
+
+  printf("运行到返回前\n");
+  return 0;
+}
+
+static int
+l_new_parser(lua_State *L) {
+  http_parser* parser = lua_newuserdata(L, sizeof(parser));
+  printf("new parser %p\n", parser);
+  http_parser_init(parser, HTTP_REQUEST);
+  return 1;
 }
 
 int
 luaopen_chttp(lua_State *L) {
     luaL_Reg lib[] = {
         {"parse", l_parse_http},
+        {"new_parser", l_new_parser},
         {NULL, NULL},
     };
     luaL_newlib(L, lib);

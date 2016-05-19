@@ -1,11 +1,20 @@
-local M = require "chttp"
-package.path = package.path .. ';../async/?.lua'
-package.cpath = package.cpath .. ';../async/?.so'
+local chttp = require "chttp"
 local async = require "async"
 local EventLoop = async.EventLoop
 local Listener = async.Listener
 local Connection = async.Connection
 
+local Parser = {}
+function Parser:new()
+  local o = { parser = chttp.new_parser() }
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function Parser:parse(data, result)
+  chttp.parse(self.parser, data, result)
+end
 
 local GET = 1
 local POST = 2
@@ -13,11 +22,19 @@ local HEAD = 3
 
 local HttpConn = {}
 setmetatable(HttpConn, {__index = Connection})
+
+function new_http_conn(fd)
+  local o = HttpConn:new(fd)
+  o.parser = Parser:new()
+  o.request = {}
+  return o
+end
+
 function HttpConn:on_read(data)
     if not data then
         return
     end
-    M.parse(self.request, data)
+    self.parser:parse(data, self.request)
     print('日，on_read中')
     if self.request.complete then
         for k,v in pairs(self.request.Head) do
@@ -35,7 +52,7 @@ end
 function serve(port, handler)
     local server = Listener:new(port)
     function server:on_conn(fd, event)
-        local c = HttpConn:new(fd)
+        local c = new_http_conn(fd)
         c.request = {}
         c.handler = handler
         c:add2event(event)
@@ -46,6 +63,9 @@ function serve(port, handler)
     event:run()
 end
 
-M.serve = serve
+local M = {
+  Parser = Parser,
+  serve = serve,
+}
 
 return M
