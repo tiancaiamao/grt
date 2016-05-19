@@ -1,3 +1,6 @@
+package.cpath = package.cpath .. ';../lib/?.so'
+package.path = package.path .. ';../lib/?.lua'
+
 local http = require "http"
 
 function index_handler(req)

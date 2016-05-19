@@ -1,3 +1,6 @@
+package.cpath = package.cpath .. ';../lib/?.so'
+package.path = package.path .. ';../lib/?.lua'
+
 local net = require "net"
 local Thread = net.Thread
 local Listener = net.Listener
