@@ -1,25 +1,16 @@
-SRCS = \
-src/ltask.c \
-src/handlemap.c \
-src/queue.c \
-src/schedule.c \
-src/serialize.c
+SRCS = ltask.c handlemap.c queue.c schedule.c serialize.c
 
-all :
-	echo 'make macosx or make linux or make mingw'
+macosx : $(SRCS)
+	gcc -Wall -bundle -undefined dynamic_lookup -fPIC -o ../../lib/ltask.so $^ -lpthread
 
-macosx : luaclib/ltask.dylib luaclib/csocket.dylib luaclib/csystem.dylib
 linux : ltask.so
-mingw : ltask.dl
+mingw : ltask.dll
 
 luaclib/csystem.dylib : src/system.c
 	gcc -g -Wall -bundle -undefined dynamic_lookup -fPIC -o $@ $^
 
 luaclib/csocket.dylib : src/socket_lib.c
 	gcc -g -Wall -bundle -undefined dynamic_lookup -fPIC -o $@ $^
-
-luaclib/ltask.dylib : $(SRCS)
-	gcc -g -Wall -bundle -undefined dynamic_lookup -fPIC -o $@ $^ -lpthread
 
 ltask.so : $(SRCS)
 	gcc -Wall -g --shared -fpic -o$@ $^ -lpthread
