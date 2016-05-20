@@ -1,17 +1,8 @@
-local socket = require "c.socket"
-local epoll = require "c.epoll"
-
-local M = {}
+require("util")
+local socket = require("c.socket")
+local epoll = require("c.epoll")
 
 local EventLoop = {}
-function EventLoop:new()
-	local obj = {
-		handlers = {},
-		epollfd = epoll.create(),
-	}
-	self.__index = self
-	return setmetatable(obj, self)
-end
 
 function EventLoop:add(handler)
 	self.handlers[handler.fd] = handler
@@ -23,7 +14,7 @@ function EventLoop:del(handler)
 	epoll.ctl(self.epollfd, epoll.CTL_DEL, handler.fd)
 end
 
-function EventLoop:run() 
+function EventLoop:run()
 	local result = {}
 	while true do
 		for i = 1, epoll.wait(self.epollfd, result) do
@@ -41,25 +32,20 @@ function EventLoop:run()
 	end
 end
 
-local Listener = {}
-function Listener:new(addr)
-	fd, err = socket.listen(addr)
-	if err then
-		print(err)
-		return nil
-	end
-	local obj = {
-		fd = fd,
-		addr = addr,
-	}
-	self.__index = self
-	return setmetatable(obj, self)
+local function new_event_loop()
+  print("EventLoop", EventLoop)
+  return new_object(EventLoop, {
+		handlers = {},
+		epollfd = epoll.create(),
+  })
 end
+
+local Listener = {}
 function Listener:on_writeable(eventloop) end
 function Listener:on_error(eventloop) end
 function Listener:on_readable(eventloop)
 	local fd, err = socket.accept(self.fd)
-	if not err then 
+	if not err then
 		self:on_conn(fd, eventloop)
 	end
 end
@@ -69,18 +55,28 @@ function Listener:on_conn(fd, event)
 	socket.close(fd)
 end
 
+local function new_listener(addr)
+	local fd, err = socket.listen(addr)
+	if err then
+		print(err)
+		return nil
+	end
+  return new_object(Listener, {
+		fd = fd,
+		addr = addr,
+  })
+end
+
 local BufferQueue = {}
 
-function BufferQueue:new()
-	local list = {
+local function new_buffer_queue()
+  return new_object(BufferQueue, {
 		head = 1,
 		tail = 1,
-		-- available data in [head, tail) 
+		-- available data in [head, tail)
 		deque = {},
 		enque = {},
-	}
-	self.__index = self
-	return setmetatable(list, self)
+  })
 end
 
 function BufferQueue:push(x)
@@ -91,7 +87,7 @@ function BufferQueue:pop()
 	if self.head == self.tail then
 		self.head = 1
 		self.deque, self.enque = self.enque, self.deque
-		self.tail = #self.deque+1 
+		self.tail = #self.deque+1
 	end
 
 	if self.head < self.tail then
@@ -108,14 +104,7 @@ function BufferQueue:push_back(x)
 end
 
 local Conn = {}
-function Conn:new(fd)
-	local obj = {
-		fd = fd,
-		buffer = BufferQueue:new()
-	}
-	self.__index = self
-	return setmetatable(obj, self)
-end
+
 function Conn:add2event(el)
 	self.eventloop = el
 	el:add(self)
@@ -130,6 +119,7 @@ function Conn:on_readable(eventloop)
 	local data = socket.read(self.fd)
 	self:on_read(data)
 end
+
 function Conn:write(data)
 	self.buffer:push(data)
 	local epollfd = self.eventloop.epollfd
@@ -153,8 +143,20 @@ function Conn:on_writeable(eventloop)
     print('退出呀')
 end
 
-M.EventLoop = EventLoop
-M.Listener = Listener
-M.Connection = Conn
+local function new_conn(fd)
+  return new_object(Conn, {
+		fd = fd,
+		buffer = new_buffer_queue()
+  })
+end
+
+local M = {
+  new_event_loop = new_event_loop,
+  new_listener = new_listener,
+  new_connection = new_conn,
+  EventLoop = EventLoop,
+  Listener = Listener,
+  Connection = Conn
+}
 
 return M

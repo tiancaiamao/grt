@@ -1,34 +1,33 @@
 local chttp = require "chttp"
 local async = require "async"
-local EventLoop = async.EventLoop
-local Listener = async.Listener
+local new_event_loop = async.new_event_loop
+local new_listener = async.new_listener
 local Connection = async.Connection
 
 local Parser = {}
-function Parser:new()
-  local o = { parser = chttp.new_parser() }
-  setmetatable(o, self)
-  self.__index = self
-  return o
-end
 
 function Parser:parse(data, result)
   chttp.parse(self.parser, data, result)
+end
+
+function new_parser()
+  return new_object(Parser,{
+      parser = chttp.new_parser()
+  })
 end
 
 local GET = 1
 local POST = 2
 local HEAD = 3
 
-local HttpConn = {}
-setmetatable(HttpConn, {__index = Connection})
-
-function new_http_conn(fd)
-  local o = HttpConn:new(fd)
-  o.parser = Parser:new()
-  o.request = {}
+function new_object(method, data)
+  local o = data or {}
+  o.__index = method
+  setmetatable(o, o)
   return o
 end
+
+local HttpConn = new_object(Connection)
 
 function HttpConn:on_read(data)
     if not data then
@@ -49,8 +48,14 @@ function HttpConn:on_read(data)
     end
 end
 
+function new_http_conn(fd)
+  local o = new_object(HttpConn, new_conn(fd))
+  o.parser = new_parser()
+  return o
+end
+
 function serve(port, handler)
-    local server = Listener:new(port)
+    local server = new_listener(port)
     function server:on_conn(fd, event)
         local c = new_http_conn(fd)
         c.request = {}
@@ -58,7 +63,7 @@ function serve(port, handler)
         c:add2event(event)
     end
 
-    local event = EventLoop:new()
+    local event = new_event_loop()
     event:add(server)
     event:run()
 end
